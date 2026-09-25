@@ -23,6 +23,19 @@ export function errorHandler(error, _req, res, _next) {
     });
   }
 
+  if (
+    ["ECONNREFUSED", "ETIMEDOUT", "PROTOCOL_CONNECTION_LOST", "ECONNRESET"].includes(
+      error.code
+    )
+  ) {
+    console.error("Database connection error:", error);
+    return res.status(503).json({
+      error: {
+        message: "Database tidak tersedia. Pastikan MySQL XAMPP sedang berjalan."
+      }
+    });
+  }
+
   console.error(error);
   return res.status(500).json({
     error: {
@@ -30,4 +43,3 @@ export function errorHandler(error, _req, res, _next) {
     }
   });
 }
-

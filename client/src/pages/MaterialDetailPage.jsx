@@ -7,12 +7,32 @@ export function MaterialDetailPage() {
   const [material, setMaterial] = useState(null);
   const [sessionId, setSessionId] = useState(null);
   const [watching, setWatching] = useState(false);
+  const [displayWatchedSeconds, setDisplayWatchedSeconds] = useState(0);
   const [error, setError] = useState("");
   const heartbeatRef = useRef(null);
+  const tickRef = useRef(null);
+  const sessionRef = useRef(null);
+  const watchedRef = useRef(0);
+  const serverWatchedRef = useRef(0);
+  const minWatchRef = useRef(0);
+  const completedRef = useRef(false);
+  const startingRef = useRef(false);
+  const heartbeatInFlightRef = useRef(false);
 
   useEffect(() => {
     apiRequest(`/materials/${id}`)
-      .then(setMaterial)
+      .then((data) => {
+        const completed = Boolean(data.completedAt) && data.watchedSeconds >= data.minWatchSeconds;
+        setMaterial(data);
+        watchedRef.current = completed ? data.watchedSeconds : 0;
+        serverWatchedRef.current = watchedRef.current;
+        minWatchRef.current = data.minWatchSeconds;
+        setDisplayWatchedSeconds(watchedRef.current);
+        completedRef.current = completed;
+        if (!completed) {
+          startWatching();
+        }
+      })
       .catch((requestError) => setError(requestError.message));
   }, [id]);
 
@@ -21,52 +41,113 @@ export function MaterialDetailPage() {
       if (heartbeatRef.current) {
         window.clearInterval(heartbeatRef.current);
       }
-      if (sessionId) {
-        apiRequest(`/watch-sessions/${sessionId}/finish`, { method: "POST" }).catch(() => {});
+      if (tickRef.current) {
+        window.clearInterval(tickRef.current);
+      }
+      if (sessionRef.current && !completedRef.current) {
+        apiRequest(`/watch-sessions/${sessionRef.current}/finish`, { method: "POST" }).catch(() => {});
       }
     };
-  }, [sessionId]);
+  }, [id]);
 
   async function startWatching() {
+    if (startingRef.current || sessionRef.current || completedRef.current) {
+      return;
+    }
+
+    startingRef.current = true;
     setError("");
     try {
       const session = await apiRequest(`/materials/${id}/watch-sessions`, { method: "POST" });
+      sessionRef.current = session.id;
       setSessionId(session.id);
       setWatching(true);
-      heartbeatRef.current = window.setInterval(async () => {
-        if (document.visibilityState !== "visible") {
+      const sendHeartbeat = async () => {
+        if (
+          heartbeatInFlightRef.current ||
+          document.visibilityState !== "visible" ||
+          completedRef.current ||
+          !sessionRef.current
+        ) {
           return;
         }
-        const progress = await apiRequest(`/watch-sessions/${session.id}/heartbeat`, {
-          method: "POST",
-          body: JSON.stringify({ watchedSeconds: 15 })
-        });
-        setMaterial((current) =>
-          current
-            ? {
-                ...current,
-                watchedSeconds: progress.watchedSeconds,
-                completedAt: progress.completedAt,
-                evaluationUnlocked: progress.completed
-              }
-            : current
+
+        const remaining = Math.max(0, minWatchRef.current - serverWatchedRef.current);
+        if (remaining === 0) {
+          await completeWatching();
+          return;
+        }
+
+        heartbeatInFlightRef.current = true;
+        try {
+          const progress = await apiRequest(`/watch-sessions/${sessionRef.current}/heartbeat`, {
+            method: "POST",
+            body: JSON.stringify({ watchedSeconds: Math.min(15, remaining) })
+          });
+          watchedRef.current = progress.watchedSeconds;
+          serverWatchedRef.current = progress.watchedSeconds;
+          setDisplayWatchedSeconds(progress.watchedSeconds);
+          setMaterial((current) => current ? {
+            ...current,
+            watchedSeconds: progress.watchedSeconds,
+            completedAt: progress.completedAt,
+            evaluationUnlocked: progress.completed && progress.watchedSeconds >= minWatchRef.current
+          } : current);
+
+          if (progress.completed && progress.watchedSeconds >= minWatchRef.current) {
+            await completeWatching();
+          }
+        } catch (requestError) {
+          setError(requestError.message);
+        } finally {
+          heartbeatInFlightRef.current = false;
+        }
+      };
+      tickRef.current = window.setInterval(() => {
+        if (document.visibilityState !== "visible" || completedRef.current) {
+          return;
+        }
+
+        const nextSeconds = Math.min(
+          watchedRef.current + 1,
+          minWatchRef.current || watchedRef.current + 1
         );
-      }, 15000);
+        watchedRef.current = nextSeconds;
+        setDisplayWatchedSeconds(nextSeconds);
+        if (nextSeconds >= minWatchRef.current) {
+          sendHeartbeat();
+        }
+      }, 1000);
+      heartbeatRef.current = window.setInterval(sendHeartbeat, 15000);
     } catch (requestError) {
       setError(requestError.message);
+    } finally {
+      startingRef.current = false;
     }
   }
 
-  async function stopWatching() {
+  async function completeWatching() {
     if (heartbeatRef.current) {
       window.clearInterval(heartbeatRef.current);
       heartbeatRef.current = null;
     }
-    if (sessionId) {
-      await apiRequest(`/watch-sessions/${sessionId}/finish`, { method: "POST" });
+    if (tickRef.current) {
+      window.clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
+    completedRef.current = true;
+    if (sessionRef.current) {
+      await apiRequest(`/watch-sessions/${sessionRef.current}/finish`, { method: "POST" });
+      sessionRef.current = null;
       setSessionId(null);
     }
     setWatching(false);
+    setMaterial((current) => current ? {
+      ...current,
+      watchedSeconds: minWatchRef.current,
+      completedAt: new Date().toISOString(),
+      evaluationUnlocked: true
+    } : current);
   }
 
   if (error) {
@@ -80,30 +161,38 @@ export function MaterialDetailPage() {
   return (
     <div className="stack">
       <div className="card">
-        <h2>{material.title}</h2>
-        <p>{material.description}</p>
-        <div className="muted-text">
-          Progress tersimpan {material.watchedSeconds} / {material.minWatchSeconds} detik
+        <h2 className="material-title">{material.title}</h2>
+        <p className="material-description">{material.description}</p>
+        <div className="watch-status">
+          <span className={`badge ${material.completedAt && displayWatchedSeconds >= material.minWatchSeconds ? "badge-complete" : "badge-pending"}`}>
+            {material.completedAt && displayWatchedSeconds >= material.minWatchSeconds ? "Sudah disimak" : "Belum disimak"}
+          </span>
+          <strong>
+            {material.completedAt && displayWatchedSeconds >= material.minWatchSeconds
+              ? "Materi sudah selesai disimak"
+              : "Sedang menyimak otomatis"}
+          </strong>
+          <span className="watch-countdown">
+            {material.completedAt && displayWatchedSeconds >= material.minWatchSeconds
+              ? "Selesai"
+              : `Sisa waktu ${Math.max(0, material.minWatchSeconds - displayWatchedSeconds)} detik`}
+          </span>
+          <div className="watch-progress-track">
+            <span style={{ width: `${Math.min(100, (displayWatchedSeconds / material.minWatchSeconds) * 100)}%` }} />
+          </div>
+          <span className="muted-text">
+            {displayWatchedSeconds} / {material.minWatchSeconds} detik
+          </span>
         </div>
         <div className="video-frame">
           <iframe
             title={material.title}
-            src={`https://www.youtube.com/embed/${material.youtubeVideoId}`}
+            src={`https://www.youtube.com/embed/${material.youtubeVideoId}?autoplay=1`}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
         </div>
-        <div className="action-row">
-          {!watching ? (
-            <button className="primary-button" type="button" onClick={startWatching}>
-              Mulai menyimak
-            </button>
-          ) : (
-            <button className="secondary-button" type="button" onClick={stopWatching}>
-              Hentikan sesi
-            </button>
-          )}
-        </div>
+        {watching && <div className="info-box">Timer berjalan otomatis selama halaman ini aktif. Anda tidak perlu menekan tombol mulai.</div>}
       </div>
       <div className="card">
         <h3>Evaluasi materi</h3>
@@ -118,11 +207,14 @@ export function MaterialDetailPage() {
                 <div className="muted-text">{item.instructions}</div>
               </div>
               {item.submittedAt ? (
-                <Link to={`/hasil/${item.attemptId}`}>Lihat hasil</Link>
+                <div className="action-row">
+                  <span className="badge badge-complete">Sudah dikerjakan</span>
+                  <Link className="secondary-button inline-button" to={`/hasil/${item.attemptId}`}>Lihat hasil</Link>
+                </div>
               ) : material.evaluationUnlocked ? (
-                <Link to={`/evaluasi/${item.id}`}>Mulai evaluasi</Link>
+                <Link className="primary-button inline-button" to={`/evaluasi/${item.id}`}>Kerjakan evaluasi</Link>
               ) : (
-                <span className="muted-text">Terkunci</span>
+                <span className="badge badge-pending">Belum dikerjakan</span>
               )}
             </div>
           ))}

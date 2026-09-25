@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import express from "express";
 import { z } from "zod";
-import { query, queryOne, withTransaction } from "../db/helpers.js";
+import { formatMysqlDateTime, query, queryOne, withTransaction } from "../db/helpers.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { HttpError, asyncHandler } from "../utils/http-error.js";
 import { assertYoutubeUrl } from "../utils/youtube.js";
@@ -334,7 +334,11 @@ router.put(
         `INSERT INTO registration_settings
           (registration_open_at, registration_close_at, status, updated_by, created_at, updated_at)
          VALUES (?, ?, 'configured', ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
-        [payload.registrationOpenAt, payload.registrationCloseAt, req.user.id]
+        [
+          formatMysqlDateTime(payload.registrationOpenAt),
+          formatMysqlDateTime(payload.registrationCloseAt),
+          req.user.id
+        ]
       );
 
       await insertRegistrationLog(connection, result.insertId, "update", previous, payload, req.user.id);
@@ -363,7 +367,11 @@ router.post(
         `INSERT INTO registration_settings
           (registration_open_at, registration_close_at, status, updated_by, created_at, updated_at)
          VALUES (?, ?, 'configured', ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
-        [payload.registrationOpenAt, payload.registrationCloseAt, req.user.id]
+        [
+          formatMysqlDateTime(payload.registrationOpenAt),
+          formatMysqlDateTime(payload.registrationCloseAt),
+          req.user.id
+        ]
       );
 
       await insertRegistrationLog(connection, result.insertId, "open-now", previous, payload, req.user.id);
@@ -388,7 +396,11 @@ router.post(
         `INSERT INTO registration_settings
           (registration_open_at, registration_close_at, status, updated_by, created_at, updated_at)
          VALUES (?, ?, 'configured', ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
-        [payload.registrationOpenAt, payload.registrationCloseAt, req.user.id]
+        [
+          formatMysqlDateTime(payload.registrationOpenAt),
+          formatMysqlDateTime(payload.registrationCloseAt),
+          req.user.id
+        ]
       );
       await insertRegistrationLog(connection, result.insertId, "close-now", previous, payload, req.user.id);
     });
@@ -541,7 +553,7 @@ router.post(
           payload.youtubeUrl,
           youtube.videoId,
           payload.thumbnailUrl || null,
-          payload.publishAt,
+          formatMysqlDateTime(payload.publishAt),
           payload.minWatchSeconds,
           payload.status,
           req.user.id
@@ -591,7 +603,7 @@ router.patch(
           payload.youtubeUrl,
           youtube.videoId,
           payload.thumbnailUrl || null,
-          payload.publishAt,
+          formatMysqlDateTime(payload.publishAt),
           payload.minWatchSeconds,
           payload.status,
           materialId

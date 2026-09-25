@@ -62,6 +62,7 @@ export function RegisterPage() {
   return (
     <div className="auth-page">
       <div className="auth-card auth-card-wide">
+        <img className="auth-logo" src="/logo_bel_on.svg" alt="Logo Thobari Academy" />
         <h1>Pendaftaran Peserta</h1>
         <p>{status.message}</p>
         {!status.registrationOpen ? (
@@ -155,4 +156,3 @@ export function RegisterPage() {
     </div>
   );
 }
-

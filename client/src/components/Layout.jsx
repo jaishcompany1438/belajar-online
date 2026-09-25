@@ -21,7 +21,7 @@ export function Layout() {
       {isAdmin ? (
         <aside className="sidebar">
           <Link to="/admin" className="brand">
-            <span className="brand-mark">L</span>
+            <img className="brand-logo" src="/logo_bel_on.svg" alt="" />
             <span>Thobari Academy</span>
           </Link>
           <div className="sidebar-label">Menu utama</div>
@@ -43,7 +43,7 @@ export function Layout() {
       ) : (
         <header className="topbar">
           <Link to="/dashboard" className="brand">
-            <span className="brand-mark">L</span>
+            <img className="brand-logo" src="/logo_bel_on.svg" alt="" />
             <span>Thobari Academy</span>
           </Link>
           <nav className="topnav" aria-label="Navigasi utama">

@@ -63,6 +63,19 @@ Backend default di `http://localhost:4000`.
 
 > XAMPP note: versi MariaDB lama pada XAMPP tidak menyediakan fungsi `JSON_ARRAYAGG`. Backend ini menggunakan query relasi terpisah untuk login dan profil agar tetap kompatibel dengan instalasi XAMPP umum. Jika database lama masih menyimpan struktur dari percobaan sebelumnya, jalankan schema dan seed kembali setelah memastikan database yang dipakai sama dengan `MYSQL_DATABASE` di `server/.env`.
 
+Jika login menunggu sekitar 5 detik lalu menampilkan `Database tidak tersedia`, periksa hal berikut:
+
+1. Pastikan MySQL/MariaDB di XAMPP berstatus **Running**.
+2. Pastikan port XAMPP sama dengan `MYSQL_PORT` (default `3306`).
+3. Pastikan `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, dan `MYSQL_DATABASE` di `server/.env` sesuai.
+4. Uji koneksi dari PowerShell:
+
+   ```powershell
+   & "E:\website\xampp\mysql\bin\mysql.exe" --protocol=TCP -h 127.0.0.1 -P 3306 -u root -e "SELECT 1;"
+   ```
+
+5. Jika perintah tersebut gagal atau berhenti pada `handshake`, restart MySQL dari XAMPP lalu jalankan ulang backend. Ini adalah masalah service MySQL lokal, bukan kredensial aplikasi.
+
 ### 5. Jalankan frontend
 
 Di terminal kedua:

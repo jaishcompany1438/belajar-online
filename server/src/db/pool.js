@@ -4,7 +4,8 @@ import { env } from "../config/env.js";
 export const pool = mysql.createPool({
   ...env.mysql,
   connectionLimit: 10,
+  waitForConnections: true,
+  queueLimit: 0,
   namedPlaceholders: true,
   timezone: "Z"
 });
-

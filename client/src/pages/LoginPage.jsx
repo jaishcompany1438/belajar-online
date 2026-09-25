@@ -42,6 +42,7 @@ export function LoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <img className="auth-logo" src="/logo_bel_on.svg" alt="Logo Thobari Academy" />
         <h1>Masuk LMS</h1>
         <p>Login menggunakan email atau username.</p>
         <form onSubmit={handleSubmit} className="stack">
@@ -81,4 +82,3 @@ export function LoginPage() {
     </div>
   );
 }
-

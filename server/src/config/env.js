@@ -16,7 +16,7 @@ export const env = {
     port: Number(process.env.MYSQL_PORT || 3306),
     user: readRequired("MYSQL_USER", "root"),
     password: readRequired("MYSQL_PASSWORD", ""),
-    database: readRequired("MYSQL_DATABASE", "belajar_online")
+    database: readRequired("MYSQL_DATABASE", "belajar_online"),
+    connectTimeout: Number(process.env.MYSQL_CONNECT_TIMEOUT || 5000)
   }
 };
-

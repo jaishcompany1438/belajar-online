@@ -2,7 +2,7 @@ USE beol;
 
 INSERT INTO users (id, username, email, password_hash, role, full_name, bio, phone, status, created_at, updated_at)
 VALUES
-  (1, 'admin', 'admin@example.com', '$2a$10$D6NWBnBCuj53pPEU/RPUT.WWLBZoHdx.zSMvX4yN8Y1aDarBFXthi', 'admin', 'Administrator', 'Administrator LMS', '081234567890', 'active', UTC_TIMESTAMP(), UTC_TIMESTAMP())
+  (1, 'admin', 'admin@example.com', '$2a$10$HorpnsmDpVUoxQ98s/kP7./XHCulrohh82eQqJ1QQtuSQVQDxIeqe', 'admin', 'Administrator', 'Administrator LMS', '081234567890', 'active', UTC_TIMESTAMP(), UTC_TIMESTAMP())
 ON DUPLICATE KEY UPDATE email = VALUES(email), password_hash = VALUES(password_hash), role = VALUES(role), status = VALUES(status);
 
 INSERT INTO cohorts (id, name, admission_year, status, created_at, updated_at)

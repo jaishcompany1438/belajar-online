@@ -28,13 +28,14 @@ export function MaterialsPage() {
               Wajib menyimak {item.minWatchSeconds} detik · tersimpan {item.watchedSeconds} detik
             </div>
             <div className="badge-row">
-              <span className="badge">{item.status}</span>
+              <span className={`badge ${item.status === "completed" ? "badge-complete" : "badge-pending"}`}>
+                {item.status === "completed" ? "Sudah disimak" : "Belum disimak"}
+              </span>
             </div>
-            <Link to={`/materi/${item.id}`}>Buka materi</Link>
+            <Link className="primary-button inline-button" to={`/materi/${item.id}`}>Buka materi</Link>
           </article>
         ))}
       </div>
     </div>
   );
 }
-

@@ -25,8 +25,18 @@ router.get(
           m.publish_at,
           m.min_watch_seconds,
           m.status,
-          COALESCE(mp.watched_seconds, 0) AS watched_seconds,
-          mp.completed_at
+          CASE
+            WHEN mp.completed_at IS NOT NULL
+              AND mp.watched_seconds >= m.min_watch_seconds
+            THEN COALESCE(mp.watched_seconds, 0)
+            ELSE 0
+          END AS watched_seconds,
+          CASE
+            WHEN mp.completed_at IS NOT NULL
+              AND mp.watched_seconds >= m.min_watch_seconds
+            THEN mp.completed_at
+            ELSE NULL
+          END AS completed_at
         FROM materials m
         INNER JOIN user_classes uc ON uc.user_id = :userId
         INNER JOIN classes c ON c.id = uc.class_id
@@ -119,7 +129,7 @@ router.get(
         minWatchSeconds: material.min_watch_seconds,
         watchedSeconds: material.watched_seconds,
         completedAt: material.completed_at,
-        evaluationUnlocked: material.watched_seconds >= material.min_watch_seconds,
+        evaluationUnlocked: Boolean(material.completed_at),
         evaluations: evaluations.map((item) => ({
           id: item.id,
           title: item.title,
@@ -156,6 +166,12 @@ router.post(
         `INSERT INTO watch_sessions
           (user_id, material_id, started_at, last_heartbeat_at, ended_at, accumulated_seconds, status)
          VALUES (?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP(), NULL, 0, 'active')`,
+        [req.user.id, material.id]
+      );
+
+      await connection.query(
+        `DELETE FROM material_progress
+         WHERE user_id = ? AND material_id = ? AND completed_at IS NULL`,
         [req.user.id, material.id]
       );
 

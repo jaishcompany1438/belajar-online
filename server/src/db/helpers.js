@@ -1,5 +1,15 @@
 import { pool } from "./pool.js";
 
+export function formatMysqlDateTime(value) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Invalid datetime value");
+  }
+
+  return date.toISOString().slice(0, 19).replace("T", " ");
+}
+
 export async function query(sql, params = {}) {
   const [rows] = await pool.query(sql, params);
   return rows;
@@ -85,7 +95,7 @@ export async function getUserWithClasses(userId) {
         u.full_name,
         u.bio,
         u.phone,
-        u.status,
+        u.status
       FROM users u
       WHERE u.id = :userId`,
     { userId }
@@ -144,8 +154,18 @@ export async function getAccessibleMaterial(userId, materialId) {
         m.publish_at,
         m.min_watch_seconds,
         m.status,
-        COALESCE(mp.watched_seconds, 0) AS watched_seconds,
-        mp.completed_at
+        CASE
+          WHEN mp.completed_at IS NOT NULL
+            AND mp.watched_seconds >= m.min_watch_seconds
+          THEN COALESCE(mp.watched_seconds, 0)
+          ELSE 0
+        END AS watched_seconds,
+        CASE
+          WHEN mp.completed_at IS NOT NULL
+            AND mp.watched_seconds >= m.min_watch_seconds
+          THEN mp.completed_at
+          ELSE NULL
+        END AS completed_at
       FROM materials m
       INNER JOIN user_classes uc ON uc.user_id = :userId
       INNER JOIN classes c ON c.id = uc.class_id
