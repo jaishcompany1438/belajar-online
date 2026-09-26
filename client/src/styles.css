@@ -105,6 +105,9 @@ th { color: var(--muted); font-size: .82rem; text-transform: uppercase; letter-s
 .secondary-button:hover, .table-actions button:hover { background: #d6e4ed; }
 .inline-button { display: inline-flex; justify-content: center; }
 .action-row, .table-actions, .badge-row { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.5rem; }
+.pagination-status { color: var(--muted); font-size: .95rem; }
+.pagination button:disabled { cursor: not-allowed; opacity: .5; }
 .content-section-heading, .builder-header, .question-editor-header, .options-editor-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
 .content-section-heading h2, .builder-header h3 { margin: 0; }
 .content-section-heading p, .builder-header p { margin: .35rem 0 0; }

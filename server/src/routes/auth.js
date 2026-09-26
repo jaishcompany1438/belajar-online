@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
@@ -13,6 +14,7 @@ import {
 import { requireAuth } from "../middleware/auth.js";
 import { HttpError, asyncHandler } from "../utils/http-error.js";
 import { signToken } from "../utils/jwt.js";
+import { sendVerificationEmail } from "../services/email.js";
 
 const router = express.Router();
 
@@ -42,6 +44,15 @@ const changePasswordSchema = z.object({
   oldPassword: z.string().min(8),
   newPassword: z.string().min(8)
 });
+
+const verifySchema = z.object({
+  token: z.string().min(20),
+  code: z.string().regex(/^\d{6}$/)
+});
+
+function hashVerificationValue(value) {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
 
 async function serializeCurrentUser(userId) {
   const user = await queryOne(
@@ -144,13 +155,28 @@ router.post(
     }
 
     const passwordHash = await bcrypt.hash(payload.password, 10);
+    const verificationCode = String(crypto.randomInt(100000, 1000000));
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const createdUser = await withTransaction(async (connection) => {
       const [insertResult] = await connection.query(
         `INSERT INTO users
-          (username, email, password_hash, role, full_name, bio, phone, status, created_at, updated_at)
-         VALUES (?, ?, ?, 'student', ?, ?, ?, 'pending', UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
-        [payload.username, payload.email, passwordHash, payload.fullName, payload.bio, payload.phone]
+          (username, email, password_hash, role, full_name, bio, phone, status,
+           verification_token_hash, verification_code_hash, verification_expires_at,
+           created_at, updated_at)
+         VALUES (?, ?, ?, 'student', ?, ?, ?, 'pending', ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
+        [
+          payload.username,
+          payload.email,
+          passwordHash,
+          payload.fullName,
+          payload.bio,
+          payload.phone,
+          hashVerificationValue(verificationToken),
+          hashVerificationValue(verificationCode),
+          verificationExpiresAt
+        ]
       );
 
       for (const classId of payload.classIds) {
@@ -170,13 +196,65 @@ router.post(
       return insertResult.insertId;
     });
 
+    try {
+      await sendVerificationEmail({
+        email: payload.email,
+        fullName: payload.fullName,
+        code: verificationCode,
+        token: verificationToken
+      });
+    } catch (error) {
+      console.error("Verification email failed:", error);
+      throw new HttpError(503, "Pendaftaran tersimpan, tetapi email verifikasi gagal dikirim. Hubungi admin.");
+    }
+
     res.status(201).json({
       data: {
         id: createdUser,
         status: "pending",
-        message: "Pendaftaran berhasil. Menunggu persetujuan admin."
+        message: "Pendaftaran berhasil. Silakan cek email untuk kode verifikasi."
       }
     });
+  })
+);
+
+router.post(
+  "/verify",
+  asyncHandler(async (req, res) => {
+    const payload = verifySchema.parse(req.body);
+    const user = await queryOne(
+      `SELECT id, status, verification_code_hash, verification_expires_at
+       FROM users
+       WHERE verification_token_hash = :tokenHash
+       LIMIT 1`,
+      { tokenHash: hashVerificationValue(payload.token) }
+    );
+
+    if (!user || user.status !== "pending") {
+      throw new HttpError(400, "Link verifikasi tidak valid atau akun sudah diverifikasi");
+    }
+
+    if (!user.verification_expires_at || new Date(user.verification_expires_at) < new Date()) {
+      throw new HttpError(400, "Kode verifikasi sudah kedaluwarsa");
+    }
+
+    if (hashVerificationValue(payload.code) !== user.verification_code_hash) {
+      throw new HttpError(400, "Nomor verifikasi tidak sesuai");
+    }
+
+    await query(
+      `UPDATE users
+       SET status = 'active',
+           verified_at = UTC_TIMESTAMP(),
+           verification_token_hash = NULL,
+           verification_code_hash = NULL,
+           verification_expires_at = NULL,
+           updated_at = UTC_TIMESTAMP()
+       WHERE id = :userId`,
+      { userId: user.id }
+    );
+
+    res.json({ data: { message: "Email berhasil diverifikasi. Silakan login." } });
   })
 );
 
@@ -205,7 +283,7 @@ router.post(
     }
 
     if (user.status === "pending") {
-      throw new HttpError(403, "Akun menunggu persetujuan admin");
+      throw new HttpError(403, "Akun belum diverifikasi. Silakan cek email Anda.");
     }
 
     if (user.status === "rejected") {

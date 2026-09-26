@@ -4,13 +4,18 @@ import { apiRequest } from "../api";
 
 export function MaterialsPage() {
   const [materials, setMaterials] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
+  const [page, setPage] = useState(1);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    apiRequest("/materials")
-      .then(setMaterials)
+    apiRequest(`/materials?page=${page}&limit=12`)
+      .then((data) => {
+        setMaterials(data.items);
+        setPagination(data.pagination);
+      })
       .catch((requestError) => setError(requestError.message));
-  }, []);
+  }, [page]);
 
   if (error) {
     return <div className="error-box">{error}</div>;
@@ -36,6 +41,29 @@ export function MaterialsPage() {
           </article>
         ))}
       </div>
+      {pagination.totalPages > 1 && (
+        <nav className="pagination" aria-label="Navigasi halaman materi">
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => setPage((currentPage) => currentPage - 1)}
+            disabled={page <= 1}
+          >
+            Sebelumnya
+          </button>
+          <span className="pagination-status">
+            Halaman {pagination.page} dari {pagination.totalPages}
+          </span>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => setPage((currentPage) => currentPage + 1)}
+            disabled={page >= pagination.totalPages}
+          >
+            Berikutnya
+          </button>
+        </nav>
+      )}
     </div>
   );
 }

@@ -131,7 +131,7 @@ export function AdminUsersPage() {
           </label>
         </div>
         <label>
-          Bio
+          Motivasi belajar di Thobari Academy
           <textarea value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} />
         </label>
         <label>
@@ -196,16 +196,6 @@ export function AdminUsersPage() {
                     })}>
                       Edit
                     </button>
-                    {item.status === "pending" && (
-                      <>
-                        <button type="button" onClick={() => runAction(`/admin/users/${item.id}/approve`)}>
-                          Approve
-                        </button>
-                        <button type="button" onClick={() => runAction(`/admin/users/${item.id}/reject`)}>
-                          Reject
-                        </button>
-                      </>
-                    )}
                     <button type="button" onClick={() => runAction(`/admin/users/${item.id}`, "DELETE")}>
                       Hapus
                     </button>
@@ -219,4 +209,3 @@ export function AdminUsersPage() {
     </div>
   );
 }
-

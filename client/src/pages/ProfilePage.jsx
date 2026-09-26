@@ -90,7 +90,7 @@ export function ProfilePage() {
             <input value={profile.username || ""} disabled />
           </label>
           <label className="full-span">
-            Bio
+            Motivasi belajar di Thobari Academy
             <textarea
               value={profile.bio || ""}
               onChange={(event) => setProfile((current) => ({ ...current, bio: event.target.value }))}
@@ -132,4 +132,3 @@ export function ProfilePage() {
     </div>
   );
 }
-

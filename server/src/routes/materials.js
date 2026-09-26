@@ -10,11 +10,48 @@ const heartbeatSchema = z.object({
   watchedSeconds: z.number().min(1).max(30)
 });
 
+const paginationSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(12)
+});
+
 router.get(
   "/",
   requireAuth,
   requireRole("student", "admin"),
   asyncHandler(async (req, res) => {
+    const { page, limit } = paginationSchema.parse(req.query);
+    const offset = (page - 1) * limit;
+    const accessJoins = `
+        INNER JOIN user_classes uc ON uc.user_id = :userId
+        INNER JOIN classes c ON c.id = uc.class_id
+        LEFT JOIN material_targets mt
+          ON mt.material_id = m.id
+         AND (
+           mt.class_id = c.id
+           OR (mt.cohort_id IS NOT NULL AND mt.cohort_id = c.cohort_id)
+         )`;
+    const accessWhere = `
+        WHERE m.status = 'published'
+          AND m.publish_at <= UTC_TIMESTAMP()
+          AND (
+            mt.id IS NOT NULL
+            OR NOT EXISTS (
+              SELECT 1
+              FROM material_targets mt_all
+              WHERE mt_all.material_id = m.id
+            )
+          )`;
+
+    const countRows = await query(
+      `SELECT COUNT(DISTINCT m.id) AS total
+       FROM materials m
+       ${accessJoins}
+       ${accessWhere}`,
+      { userId: req.user.id }
+    );
+    const total = Number(countRows[0]?.total || 0);
+
     const rows = await query(
       `SELECT DISTINCT
           m.id,
@@ -38,49 +75,42 @@ router.get(
             ELSE NULL
           END AS completed_at
         FROM materials m
-        INNER JOIN user_classes uc ON uc.user_id = :userId
-        INNER JOIN classes c ON c.id = uc.class_id
-        LEFT JOIN material_targets mt
-          ON mt.material_id = m.id
-         AND (
-           mt.class_id = c.id
-           OR (mt.cohort_id IS NOT NULL AND mt.cohort_id = c.cohort_id)
-         )
+        ${accessJoins}
         LEFT JOIN material_progress mp
           ON mp.user_id = :userId
          AND mp.material_id = m.id
-        WHERE m.status = 'published'
-          AND m.publish_at <= UTC_TIMESTAMP()
-          AND (
-            mt.id IS NOT NULL
-            OR NOT EXISTS (
-              SELECT 1
-              FROM material_targets mt_all
-              WHERE mt_all.material_id = m.id
-            )
-          )
-        ORDER BY m.publish_at DESC`,
-      { userId: req.user.id }
+        ${accessWhere}
+        ORDER BY m.publish_at DESC
+        LIMIT :limit OFFSET :offset`,
+      { userId: req.user.id, limit, offset }
     );
 
     res.json({
-      data: rows.map((row) => ({
-        id: row.id,
-        title: row.title,
-        description: row.description,
-        youtubeVideoId: row.youtube_video_id,
-        thumbnailUrl: row.thumbnail_url,
-        publishAt: row.publish_at,
-        minWatchSeconds: row.min_watch_seconds,
-        watchedSeconds: row.watched_seconds,
-        completedAt: row.completed_at,
-        status:
-          row.completed_at
-            ? "completed"
-            : row.watched_seconds > 0
-              ? "watching"
-              : "not_started"
-      }))
+      data: {
+        items: rows.map((row) => ({
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          youtubeVideoId: row.youtube_video_id,
+          thumbnailUrl: row.thumbnail_url,
+          publishAt: row.publish_at,
+          minWatchSeconds: row.min_watch_seconds,
+          watchedSeconds: row.watched_seconds,
+          completedAt: row.completed_at,
+          status:
+            row.completed_at
+              ? "completed"
+              : row.watched_seconds > 0
+                ? "watching"
+                : "not_started"
+        })),
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      }
     });
   })
 );

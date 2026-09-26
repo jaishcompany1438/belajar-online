@@ -21,7 +21,10 @@ const paginationSchema = z.object({
 const registrationSettingSchema = z.object({
   registrationOpenAt: z.string().datetime(),
   registrationCloseAt: z.string().datetime()
-});
+}).refine(
+  (value) => new Date(value.registrationCloseAt) > new Date(value.registrationOpenAt),
+  { message: "Waktu tutup harus setelah waktu buka", path: ["registrationCloseAt"] }
+);
 
 const cohortSchema = z.object({
   name: z.string().min(2),
@@ -90,10 +93,10 @@ async function insertRegistrationLog(connection, settingId, action, oldSetting, 
     [
       settingId,
       action,
-      oldSetting?.registration_open_at || null,
-      oldSetting?.registration_close_at || null,
-      newSetting?.registrationOpenAt || null,
-      newSetting?.registrationCloseAt || null,
+      oldSetting?.registration_open_at ? formatMysqlDateTime(oldSetting.registration_open_at) : null,
+      oldSetting?.registration_close_at ? formatMysqlDateTime(oldSetting.registration_close_at) : null,
+      newSetting?.registrationOpenAt ? formatMysqlDateTime(newSetting.registrationOpenAt) : null,
+      newSetting?.registrationCloseAt ? formatMysqlDateTime(newSetting.registrationCloseAt) : null,
       changedBy
     ]
   );
@@ -351,11 +354,14 @@ router.put(
 
 router.post(
   "/registration-settings/open-now",
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
     const previous = await queryOne(`SELECT * FROM registration_settings ORDER BY id DESC LIMIT 1`);
     const now = new Date();
-    const closeAt = previous?.registration_close_at
+    const previousCloseAt = previous?.registration_close_at
       ? new Date(previous.registration_close_at)
+      : null;
+    const closeAt = previousCloseAt && previousCloseAt > now
+      ? previousCloseAt
       : new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const payload = {
       registrationOpenAt: now.toISOString(),
@@ -383,7 +389,7 @@ router.post(
 
 router.post(
   "/registration-settings/close-now",
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
     const previous = await queryOne(`SELECT * FROM registration_settings ORDER BY id DESC LIMIT 1`);
     const nowIso = new Date().toISOString();
     const payload = {

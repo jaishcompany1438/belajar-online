@@ -100,19 +100,20 @@ Sistem dibangun menggunakan:
 1. Peserta membuka halaman login.
 2. Jika pendaftaran dibuka, peserta dapat memilih menu Daftar dan mengisi formulir pendaftaran.
 3. Jika pendaftaran ditutup, menu/form pendaftaran tidak dapat digunakan dan sistem menampilkan pesan "Pendaftaran belum tersedia".
-4. Setelah pendaftaran berhasil, akun berstatus menunggu persetujuan admin dan peserta menerima konfirmasi bahwa akun belum dapat digunakan.
-5. Admin menyetujui akun pendaftar sebelum peserta dapat login.
-6. Peserta mengisi username atau email dan password pada halaman login.
-7. Sistem memvalidasi kredensial dan status persetujuan, lalu mengarahkan peserta aktif ke dashboard.
-8. Dashboard menampilkan ringkasan materi hari ini, progres menyimak, evaluasi yang belum dikerjakan, dan peringkat.
-9. Peserta membuka menu Materi.
-10. Peserta memilih materi yang tersedia untuk kelas dan tahun masuknya.
-11. Sistem menampilkan detail materi, iframe YouTube, durasi minimum, dan timer.
-12. Peserta menonton hingga durasi minimum terpenuhi.
-13. Sistem menandai materi sebagai selesai dan membuka tombol evaluasi.
-14. Peserta mengerjakan soal dan mengirim jawaban.
-15. Sistem menghitung nilai, waktu pengerjaan, dan peringkat.
-16. Peserta dapat melihat hasil dan memperbarui profil.
+4. Setelah pendaftaran berhasil, sistem membuat akun berstatus `pending` dan mengirim kode acak 6 digit serta link verifikasi ke email peserta.
+5. Peserta membuka link verifikasi, memasukkan kode yang diterima, dan akun berubah menjadi `active` setelah valid.
+6. Kode dan link verifikasi berlaku selama 24 jam; akun yang belum diverifikasi tidak dapat login.
+7. Peserta mengisi username atau email dan password pada halaman login.
+8. Sistem memvalidasi kredensial dan status verifikasi, lalu mengarahkan peserta aktif ke dashboard.
+9. Dashboard menampilkan ringkasan materi hari ini, progres menyimak, evaluasi yang belum dikerjakan, dan peringkat.
+10. Peserta membuka menu Materi.
+11. Peserta memilih materi yang tersedia untuk kelas dan tahun masuknya.
+12. Sistem menampilkan detail materi, iframe YouTube, durasi minimum, dan timer.
+13. Peserta menonton hingga durasi minimum terpenuhi.
+14. Sistem menandai materi sebagai selesai dan membuka tombol evaluasi.
+15. Peserta mengerjakan soal dan mengirim jawaban.
+16. Sistem menghitung nilai, waktu pengerjaan, dan peringkat.
+17. Peserta dapat melihat hasil dan memperbarui profil.
 
 ### 6.2 Alur Admin
 
@@ -422,7 +423,7 @@ Komponen reusable:
 
 ### Fase 2 - Autentikasi dan Master Data
 
-- Implementasi login dengan email atau username, logout, pendaftaran, persetujuan admin, session/token, dan role guard.
+- Implementasi login dengan email atau username, logout, pendaftaran, verifikasi email mandiri, session/token, dan role guard.
 - Implementasi konfigurasi periode pendaftaran serta status buka/tutup.
 - CRUD user, kelas, dan tahun masuk.
 - Seeder akun admin dan data contoh.
@@ -461,7 +462,7 @@ Komponen reusable:
 - Unit test: validasi URL YouTube, aturan ranking, kalkulasi nilai, durasi menonton, dan status akun.
 - Integration test: autentikasi, pendaftaran, periode pendaftaran, otorisasi, CRUD, heartbeat, dan submit evaluasi.
 - E2E test: pendaftaran/login -> materi -> timer -> evaluasi -> hasil -> ranking.
-- Negative test: pendaftaran saat ditutup, login sebelum persetujuan, akses role salah, ID milik user lain, submit evaluasi ganda, URL tidak valid, dan input kosong.
+- Negative test: pendaftaran saat ditutup, login sebelum verifikasi email, kode/link verifikasi salah atau kedaluwarsa, akses role salah, ID milik user lain, submit evaluasi ganda, URL tidak valid, dan input kosong.
 - Performance test: query ranking dengan data peserta besar dan heartbeat serentak.
 
 ## 15. Risiko dan Mitigasi

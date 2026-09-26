@@ -40,7 +40,7 @@ export function RegisterPage() {
         method: "POST",
         body: JSON.stringify(form)
       });
-      setMessage("Pendaftaran berhasil. Tunggu persetujuan admin sebelum login.");
+      setMessage("Pendaftaran berhasil. Silakan cek email untuk mendapatkan kode verifikasi.");
       setForm({
         fullName: "",
         email: "",
@@ -118,7 +118,7 @@ export function RegisterPage() {
                 />
               </label>
               <label>
-                Bio singkat
+                Motivasi belajar di Thobari Academy
                 <textarea
                   value={form.bio}
                   onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))}

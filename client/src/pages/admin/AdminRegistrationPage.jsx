@@ -29,11 +29,21 @@ export function AdminRegistrationPage() {
     setError("");
     setMessage("");
     try {
+      if (!form.registrationOpenAt || !form.registrationCloseAt) {
+        throw new Error("Waktu buka dan tutup wajib diisi.");
+      }
+
+      const openAt = new Date(form.registrationOpenAt);
+      const closeAt = new Date(form.registrationCloseAt);
+      if (Number.isNaN(openAt.getTime()) || Number.isNaN(closeAt.getTime()) || closeAt <= openAt) {
+        throw new Error("Waktu tutup harus setelah waktu buka.");
+      }
+
       await apiRequest("/admin/registration-settings", {
         method: "PUT",
         body: JSON.stringify({
-          registrationOpenAt: new Date(form.registrationOpenAt).toISOString(),
-          registrationCloseAt: new Date(form.registrationCloseAt).toISOString()
+          registrationOpenAt: openAt.toISOString(),
+          registrationCloseAt: closeAt.toISOString()
         })
       });
       setMessage("Jadwal pendaftaran diperbarui.");
@@ -117,4 +127,3 @@ export function AdminRegistrationPage() {
     </div>
   );
 }
-

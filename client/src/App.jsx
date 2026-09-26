@@ -10,6 +10,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { RankingsPage } from "./pages/RankingsPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResultPage } from "./pages/ResultPage";
+import { VerifyPage } from "./pages/VerifyPage";
 import { AdminClassesPage } from "./pages/admin/AdminClassesPage";
 import { AdminCohortsPage } from "./pages/admin/AdminCohortsPage";
 import { AdminEvaluationsPage } from "./pages/admin/AdminEvaluationsPage";
@@ -24,6 +25,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify" element={<VerifyPage />} />
 
       <Route
         element={
@@ -109,4 +111,3 @@ export default function App() {
     </Routes>
   );
 }
-

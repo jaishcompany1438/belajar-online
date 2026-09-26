@@ -7,6 +7,7 @@ Scaffold LMS full-stack sesuai PRD di [issu.md](./issu.md) dengan:
 - Login email atau username
 - Registrasi berbasis periode yang diatur admin
 - Approval/rejection akun peserta oleh admin
+- Verifikasi email mandiri dengan kode acak dan link verifikasi
 - Relasi peserta ke banyak kelas
 - CRUD materi + target kelas/angkatan
 - YouTube iframe + watch session heartbeat server
@@ -52,6 +53,28 @@ Atau copy-paste isi [schema.sql](/E:/Website/PTQ Imam Ath Thobari/belajar/server
 - username: `admin`
 - email: `admin@example.com`
 - password: `Admin123!`
+
+### Konfigurasi email verifikasi
+
+Pendaftaran peserta mengirim kode verifikasi dan link ke email pendaftar. Isi SMTP di `server/.env`:
+
+```env
+APP_URL=http://localhost:5173
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-smtp-user
+SMTP_PASSWORD=your-smtp-password
+SMTP_FROM=Thobari Academy <noreply@example.com>
+```
+
+Jalankan migration email verification pada database yang sudah ada:
+
+```sql
+SOURCE server/database/migration-email-verification.sql;
+```
+
+Akun peserta berstatus `pending` sampai kode pada email berhasil diverifikasi. Setelah berhasil, akun otomatis menjadi `active`; admin tidak perlu menyetujui pendaftar.
 
 ### 4. Jalankan backend
 

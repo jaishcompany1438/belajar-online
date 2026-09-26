@@ -11,6 +11,10 @@ CREATE TABLE IF NOT EXISTS users (
   bio TEXT NULL,
   phone VARCHAR(30) NULL,
   status ENUM('pending', 'active', 'rejected', 'suspended') NOT NULL DEFAULT 'pending',
+  verification_token_hash CHAR(64) NULL,
+  verification_code_hash CHAR(64) NULL,
+  verification_expires_at DATETIME NULL,
+  verified_at DATETIME NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL
 );
@@ -251,4 +255,3 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     FOREIGN KEY (user_id) REFERENCES users(id)
     ON DELETE SET NULL
 );
-
